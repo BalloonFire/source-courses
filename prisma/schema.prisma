@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  // Use "prisma-client" for the modern ESM-first generator (Prisma v6+)
+  // Use "prisma-client-js" if you are on an older version or prefer node_modules generation
+  provider = "prisma-client" 
+  
+  // This generates the client in your custom folder instead of node_modules
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+
+  // FOR XAMPP: Keep this commented out or remove it.
+  // Standard local MySQL (XAMPP) supports foreign keys natively. 
+  // You only need relationMode = "prisma" for databases like PlanetScale.
+  // relationMode = "prisma"
+}
+
+model Course {
+  id String @id @default(uuid())
+  userId String
+  title String @db.Text
+  description String? @db.Text
+  imageUrl String? @db.Text
+  price Float?
+  isPublished Boolean @default(false)
+
+  categoryId String?
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  attachments Attachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+}
+
+model Category {
+  id String @id @default(uuid())
+  name String @unique
+
+  courses Course[]
+}
+
+model Attachment {
+  id String @id @default(uuid()) 
+  filename String
+  url String @db.Text
+
+  courseId String
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+}
