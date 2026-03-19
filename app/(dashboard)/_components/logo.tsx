@@ -7,6 +7,8 @@ export const Logo = () => {
             alt="Logo"
             width={120}
             height={120}
+            priority // It tells Next.js to load it immediately
+            style={{ height: "auto" }}
         />
     )
 }

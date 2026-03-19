@@ -5,16 +5,12 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  // Use "prisma-client" for the modern ESM-first generator (Prisma v6+)
-  // Use "prisma-client-js" if you are on an older version or prefer node_modules generation
-  provider = "prisma-client" 
-  
-  // This generates the client in your custom folder instead of node_modules
-  output   = "../lib/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 
   // FOR XAMPP: Keep this commented out or remove it.
   // Standard local MySQL (XAMPP) supports foreign keys natively. 
