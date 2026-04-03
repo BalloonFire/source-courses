@@ -1,15 +1,81 @@
-// Change the function to async
+import { IconBadge } from "@/components/icon-badge";
+import { db } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { LayoutDashboard } from "lucide-react";
+import { TitleForm } from "./_components/title-form";
+import { DescriptionForm } from "./_components/description-form";
+import { ImageForm } from "./_components/image-form";
+
 const CourseIdPage = async ({
     params
 }: {
     params: Promise<{ courseId: string }> // Update type to Promise
 }) => {
+    const { userId } = await auth(); // Await auth to get userId
+
+    if (!userId) {
+        return redirect("/"); // Redirect if not authenticated
+    }
+
     // Await the params here
-    const { courseId } = await params;
+    const course = await db.course.findUnique({
+        where: {
+            id: (await params).courseId, // Await params to get courseId
+        },
+    });
+
+    if (!course) {
+        return redirect("/"); // Redirect if course not found
+    }
+
+    const requiredFields = [
+        course.title,
+        course.description,
+        course.categoryId,
+        course.price,
+        course.imageUrl,
+    ]
+
+    const totalFields = requiredFields.length;
+    const completedFields = requiredFields.filter(Boolean).length;
+
+    const completionText = `${completedFields} of ${totalFields} fields completed`;
 
     return ( 
-        <div>
-            Course Id: {courseId}
+        <div className="p-6">
+            <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-y-2">
+                    <h1 className="text-2xl font-medium">
+                        Course Setup
+                    </h1>
+                    <span className="text-sm text-slate-700">
+                        Complete all fields: ({completionText})
+                    </span>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16">
+                <div>
+                    <div className="flex items-center gap-x-2">
+                        <IconBadge icon={LayoutDashboard} />
+                        <h2 className="text-xl">
+                            Customize your course
+                        </h2>
+                    </div>
+                    <TitleForm
+                        initialData={course}
+                        courseId={course.id} // Await params to get courseId
+                    />
+                    <DescriptionForm
+                        initialData={course}
+                        courseId={course.id} // Await params to get courseId
+                    />
+                    <ImageForm
+                        initialData={course}
+                        courseId={course.id} // Await params to get courseId
+                    />
+                </div>
+            </div>
         </div>
      );
 }
