@@ -2,27 +2,85 @@ import { IconBadge } from "@/components/icon-badge";
 import { db } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
+import { CircleDollarSign, File, LayoutDashboard, ListChecks } from "lucide-react";
 import { TitleForm } from "./_components/title-form";
 import { DescriptionForm } from "./_components/description-form";
 import { ImageForm } from "./_components/image-form";
 import { CategoryForm } from "./_components/category-form";
+import { PriceForm } from "./_components/price-form";
+import { AttachmentForm } from "./_components/attachment-form";
+import { ChaptersForm } from "./_components/chapters-form";
+
+// Helper function to check if chapter positions are valid (0, 1, 2, ..., n-1 with no gaps)
+const arePositionsValid = (chapters: Array<{ position: number }>) => {
+    if (chapters.length === 0) return true;
+    
+    const positions = chapters.map(c => c.position).sort((a, b) => a - b);
+    
+    // Check if positions are exactly [0, 1, 2, ..., n-1]
+    for (let i = 0; i < positions.length; i++) {
+        if (positions[i] !== i) {
+            return false;
+        }
+    }
+    return true;
+};
+
+// Helper function to recalculate positions based on createdAt order
+const ensureValidChapterPositions = async (courseId: string) => {
+    const chapters = await db.chapter.findMany({
+        where: { courseId },
+        orderBy: { createdAt: "asc" },
+    });
+
+    if (chapters.length === 0) return;
+
+    const isValid = arePositionsValid(chapters);
+    
+    if (!isValid) {
+        // Recalculate positions based on createdAt order
+        for (let i = 0; i < chapters.length; i++) {
+            await db.chapter.update({
+                where: { id: chapters[i].id },
+                data: { position: i },
+            });
+        }
+    }
+};
 
 const CourseIdPage = async ({
     params
 }: {
-    params: Promise<{ courseId: string }> // Update type to Promise
+    params: Promise<{ courseId: string }>
 }) => {
-    const { userId } = await auth(); // Await auth to get userId
+    const { userId } = await auth();
 
     if (!userId) {
-        return redirect("/"); // Redirect if not authenticated
+        return redirect("/");
     }
 
-    // Await the params here
+    const courseId = (await params).courseId;
+
+    // Ensure chapter positions are valid before fetching
+    await ensureValidChapterPositions(courseId);
+
+    // Fetch the course with chapters
     const course = await db.course.findUnique({
         where: {
-            id: (await params).courseId, // Await params to get courseId
+            id: courseId,
+            userId
+        },
+        include: {
+            chapters: {
+                orderBy: {
+                    createdAt: "asc",
+                },
+            },
+            attachments: {
+                orderBy: {
+                    createdAt: "desc",
+                },
+            }
         },
     });
 
@@ -33,13 +91,22 @@ const CourseIdPage = async ({
     });
 
     if (!course) {
-        return redirect("/"); // Redirect if course not found
+        return redirect("/");
     }
+
+    // Check if positions are now valid, if so we'll use position ordering
+    const positionsValid = arePositionsValid(course.chapters);
+    
+    // Sort chapters based on whether positions are valid
+    const sortedChapters = positionsValid 
+        ? [...course.chapters].sort((a, b) => a.position - b.position)
+        : course.chapters;
 
     const requiredFields = [
         course.title,
         course.description,
         course.categoryId,
+        sortedChapters.some(chapter => chapter.isPublished),
         course.price,
         course.imageUrl,
     ]
@@ -48,6 +115,12 @@ const CourseIdPage = async ({
     const completedFields = requiredFields.filter(Boolean).length;
 
     const completionText = `${completedFields} of ${totalFields} fields completed`;
+
+    // Pass sorted chapters to the form
+    const courseWithSortedChapters = {
+        ...course,
+        chapters: sortedChapters,
+    };
 
     return ( 
         <div className="p-6">
@@ -71,7 +144,7 @@ const CourseIdPage = async ({
                     </div>
                     <TitleForm
                         initialData={course}
-                        courseId={course.id} // Await params to get courseId
+                        courseId={course.id}
                     />
                     <DescriptionForm
                         initialData={course}
@@ -89,6 +162,44 @@ const CourseIdPage = async ({
                             value: category.id,
                         }))}
                     />
+                </div>
+                <div className="space-y-6">
+                    <div>
+                        <div className="flex items-center gap-x-2">
+                            <IconBadge icon={ListChecks} />
+                            <h2 className="text-xl">
+                                Course Chapters
+                            </h2>
+                        </div>
+                        <ChaptersForm
+                            initialData={courseWithSortedChapters}
+                            courseId={course.id}
+                        />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-x-2">
+                            <IconBadge icon={CircleDollarSign} />
+                            <h2 className="text-xl">
+                                Set Course Pricing
+                            </h2>
+                        </div>
+                        <PriceForm
+                            initialData={course}
+                            courseId={course.id}
+                        />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-x-2">
+                            <IconBadge icon={File} />
+                            <h2 className="text-xl">
+                                Course Attachments
+                            </h2>
+                        </div>
+                        <AttachmentForm
+                            initialData={course}
+                            courseId={course.id}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
