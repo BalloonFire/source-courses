@@ -19,7 +19,8 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Textarea } from "@/components/ui/textarea";
+import { TiptapEditor } from "@/components/tiptap-editor";
+import { Preview } from "@/components/preview";
 import { Course } from "@prisma/client";
 
 interface DescriptionFormProps {
@@ -77,12 +78,17 @@ export const DescriptionForm = ({
                 </Button>
             </div>
             {!isEditing && (
-                <p className={cn(
-                    "text-sm mt-2",
-                    !initialData.description && "text-slate-500 italic"
-                )}>
-                    {initialData.description || "No description provided yet."}
-                </p>
+                <>
+                    <p className={cn(
+                        "text-sm mt-2",
+                        !initialData.description && "text-slate-500 italic"
+                    )}>
+                        {initialData.description ? "Description Preview:" : "No description provided yet."}
+                    </p>
+                    {initialData.description && (
+                        <Preview value={initialData.description} />
+                    )}
+                </>
             )}        
             {isEditing && (
                 <Form {...form}>
@@ -93,10 +99,11 @@ export const DescriptionForm = ({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormControl>
-                                        <Textarea
+                                        <TiptapEditor
                                         disabled={isSubmitting}
+                                        value={field.value}
+                                        onChange={field.onChange}
                                         placeholder="Write a brief description of your course. This will help students understand what your course is about."
-                                        {...field}
                                         />
                                     </FormControl>
                                     <FormMessage />

@@ -1,6 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import Mux from "@mux/mux-node";
+
+const mux = new Mux({
+    tokenId: process.env.MUX_TOKEN_ID!,
+    tokenSecret: process.env.MUX_TOKEN_SECRET!,
+});
+
+const Video = mux.video.assets;
 
 export async function PATCH(
     req: Request,
@@ -38,7 +46,36 @@ export async function PATCH(
             }
         });
 
-        // TODO: Add video uploading url and processing status updates here as well
+        if (values.videoUrl) {
+            const existingMuxData = await db.muxData.findFirst({
+                where: {
+                    chapterId: chapterId,
+                }
+            });
+
+            if (existingMuxData) {
+                await Video.delete(existingMuxData.assetId);
+                await db.muxData.delete({
+                    where: {
+                        id: existingMuxData.id,
+                    }
+                });
+            }
+
+            // @ts-ignore
+            const asset = await Video.create({
+                input: values.videoUrl,
+                playback_policy: ["public"],
+            });
+
+            await db.muxData.create({
+                data: {
+                    assetId: asset.id,
+                    chapterId: chapterId,
+                    playbackId: asset.playback_ids?.[0]?.id,
+                }
+            });
+        }
 
         return NextResponse.json(chapter);
 
