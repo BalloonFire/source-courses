@@ -81,9 +81,9 @@ export const PriceForm = ({
             {!isEditing && (
                 <p className={cn(
                     "text-sm mt-2",
-                    !initialData.price && "text-slate-500 italic"
+                    initialData.price === null || initialData.price === undefined && "text-slate-500 italic"
                 )}>
-                    {initialData.price ? formatPrice(initialData.price) : "Free"}
+                    {initialData.price !== null && initialData.price !== undefined ? (initialData.price === 0 ? "Free" : formatPrice(initialData.price)) : "Not set"}
                 </p>
             )}        
             {isEditing && (
