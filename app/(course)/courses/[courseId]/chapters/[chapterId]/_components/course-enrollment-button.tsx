@@ -31,7 +31,7 @@ export const CourseEnrollmentButton = ({
   }
 
   return (
-    <Button onClick={onClick} disabled={isLoading} size="sm" className="w-full md:w-auto">
+    <Button onClick={onClick} disabled={isLoading} size="sm" className="w-auto shrink-0">
       Enroll for {formatPrice(price)}
     </Button>
   )
